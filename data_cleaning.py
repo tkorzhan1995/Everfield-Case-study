@@ -1,50 +1,68 @@
 import pandas as pd
+import os
 
-# Load data - Replace 'revenue.csv' with your actual file path if using CSV.
-# revenue_df = pd.read_csv('revenue.csv')
+# Load your file (adjust the path if needed)
+input_file = 'case_study_original.xlsx'
 
-# 1. Identify missing values
-missing_values = revenue_df.isnull().sum()
-print("Missing values per column:\n", missing_values)
+# Read the relevant sheets
+df_revenues = pd.read_excel(input_file, sheet_name='Revenues')
+df_rrw = pd.read_excel(input_file, sheet_name='Recurring Revenue Waterfall')
+df_category = pd.read_excel(input_file, sheet_name='Category')
+df_customer = pd.read_excel(input_file, sheet_name='Customer')
 
-# 2. Handle missing data appropriately
-# Option 1: Drop rows with missing 'customer_id' or 'date' (assumed essential fields)
-revenue_df = revenue_df.dropna(subset=['customer_id', 'date'])
+# ---------------------
+# ---- Revenues Tab ----
+# 1. Identify and print missing values
+print("Revenues missing values:\n", df_revenues.isnull().sum())
+# 2. Drop rows where Company, Customer, or Date are missing
+df_revenues = df_revenues.dropna(subset=['Company', 'Customer', 'Date'])
+# 3. Fill missing revenue with 0
+df_revenues['Value EUR'] = df_revenues['Value EUR'].fillna(0)
+# 4. Convert Date
+df_revenues['Date'] = pd.to_datetime(df_revenues['Date'], errors='coerce')
+df_revenues = df_revenues.dropna(subset=['Date'])
+# 5. Remove duplicates
+df_revenues = df_revenues.drop_duplicates()
 
-# Option 2: For optional fields such as 'customer_name', fill missing with 'Unknown'
-revenue_df['customer_name'] = revenue_df['customer_name'].fillna('Unknown')
+# --------------------------------
+# ---- Recurring Revenue Waterfall Tab ----
+print("Recurring Revenue Waterfall missing values:\n", df_rrw.isnull().sum())
+df_rrw = df_rrw.dropna(subset=['Company', 'Customer', 'Date'])
+df_rrw['Value EUR'] = df_rrw['Value EUR'].fillna(0)
+df_rrw['Category'] = df_rrw['Category'].fillna('Unknown')
+df_rrw['Date'] = pd.to_datetime(df_rrw['Date'], errors='coerce')
+df_rrw = df_rrw.dropna(subset=['Date'])
+df_rrw = df_rrw.drop_duplicates()
 
-# For 'revenue', if missing, fill with 0 or another strategy (if business logic allows)
-revenue_df['revenue'] = revenue_df['revenue'].fillna(0)
-
-# 3. Convert date columns
-# Standardize 'date' column to datetime, coerce errors to NaT (missing value)
-revenue_df['date'] = pd.to_datetime(revenue_df['date'], errors='coerce')
-
-# Drop rows where date conversion failed (optional, but ensures clean date column)
-revenue_df = revenue_df.dropna(subset=['date'])
-
-# 4. Remove duplicates
-# Remove exact duplicate rows
-revenue_df = revenue_df.drop_duplicates()
-
-# Optionally, remove duplicates based on subset of key columns
-# revenue_df = revenue_df.drop_duplicates(subset=['customer_id', 'date'])
-
-# 5. Prepare the dataset for Power BI analysis
-# Rename columns for Power BI best practices (e.g., spaces instead of underscores, Pascal Case)
-revenue_df = revenue_df.rename(columns={
-    'customer_id': 'Customer ID',
-    'customer_name': 'Customer Name',
-    'date': 'Date',
-    'revenue': 'Revenue'
+# -----------------
+# ---- Category Tab ----
+print("Category missing values:\n", df_category.isnull().sum())
+df_category = df_category.fillna({
+    'Category': 'Unknown',
+    'Category Subgroup': 'Unknown',
+    'Category Group': 'Unknown'
 })
+numeric_columns = ['Gross Increase', 'Net Increase']
+for col in numeric_columns:
+    df_category[col] = pd.to_numeric(df_category[col], errors='coerce').fillna(0)
+df_category = df_category.drop_duplicates()
 
-# Reset index for clean export
-revenue_df = revenue_df.reset_index(drop=True)
+# -----------------
+# ---- Customer Tab ----
+print("Customer missing values:\n", df_customer.isnull().sum())
+df_customer = df_customer.dropna(subset=['Customer', 'Country ID'])
+df_customer = df_customer.drop_duplicates()
 
-# Export cleaned data for Power BI
-# revenue_df.to_csv('revenue_cleaned.csv', index=False)
+# -----------------
+# Create processed folder if it doesn't exist
+os.makedirs('processed', exist_ok=True)
 
-# Print preview of cleaned data
-print(revenue_df.head())
+# Write cleaned file
+output_file = os.path.join('processed', 'case_study_original.xlsx')
+with pd.ExcelWriter(output_file) as writer:
+    df_revenues.to_excel(writer, sheet_name='Revenues', index=False)
+    df_rrw.to_excel(writer, sheet_name='Recurring Revenue Waterfall', index=False)
+    df_category.to_excel(writer, sheet_name='Category', index=False)
+    df_customer.to_excel(writer, sheet_name='Customer', index=False)
+
+print(f"Cleaned file saved to: {output_file}")
