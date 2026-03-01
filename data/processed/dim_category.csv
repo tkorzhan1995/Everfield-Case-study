@@ -1,0 +1,11 @@
+category,category_key
+Opening RR,1
+New name,2
+Churn,3
+Back to base,4
+Downsell,5
+Temporary churn,6
+Returning customer,7
+Current credit note impact,8
+Prior credit note impact,9
+Delta with reported RR,10
